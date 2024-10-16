@@ -69,7 +69,7 @@
                 }
             };
         NowWeather.send();
-        t=setTimeout(function(){TodayWeather()},3600000);//3600000毫秒(1小时)刷新一次
+        t=setTimeout(function(){TodayWeather()},1800000);//3600000毫秒(1小时)刷新一次
     }
 
 //名言部分
@@ -83,7 +83,7 @@
                 }
             }
         Poetry.send();
-        t=setTimeout(function(){NowPoetry()},3600000);//3600000毫秒(1小时)刷新一次
+        t=setTimeout(function(){NowPoetry()},1800000);//3600000毫秒(1小时)刷新一次
     }
     window.onload =function() { SolarLunarTime(); TodayWeather(); NowPoetry()}
 </script>   
