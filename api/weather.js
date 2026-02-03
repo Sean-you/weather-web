@@ -7,7 +7,13 @@ let _tokenExp = 0;
 
 async function getQWeatherToken() {
     // 1. JWT Mode
-    const privateKey = (process.env.QWEATHER_JWT_KEY || '').replace(/\\n/g, '\n');
+    // 1. JWT Mode
+    let rawKey = process.env.QWEATHER_JWT_KEY || '';
+    // Auto-wrap if only base64 content is provided
+    if (rawKey && !rawKey.includes('-----BEGIN PRIVATE KEY-----')) {
+        rawKey = `-----BEGIN PRIVATE KEY-----\n${rawKey}\n-----END PRIVATE KEY-----`;
+    }
+    const privateKey = rawKey.replace(/\\n/g, '\n');
     const kid = process.env.QWEATHER_JWT_KID;
     const sub = process.env.QWEATHER_JWT_SUB;
 
