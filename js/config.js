@@ -19,10 +19,11 @@ window.InkWeatherConfig = {
 
     // 天气配置
     weather: {
-        // 获取方式: 'geoapi' (自动) 或 'manual' (手动)
-        // geoapi: 尝试使用 auto_ip 或浏览器定位
+        // 获取方式: 'geoapi' (自动浏览器定位), 'auto_ip' (自动IP定位,无弹窗), 'manual' (手动)
+        // geoapi: 尝试浏览器定位 (会弹窗)
+        // auto_ip: 使用 IP 定位 (适合 Kindle, 无弹窗)
         // manual: 使用下方 location 字段
-        mode: 'geoapi',
+        mode: 'auto_ip',
 
         // 城市ID 或 坐标 (经度,纬度)
         // 杭州: 101210101

@@ -46,8 +46,10 @@
     // 天气部分
     function TodayWeather() {
         // Determine location
+        let mode = Config.weather.mode; // 'manual', 'geoapi', 'auto_ip'
         let location = Config.weather.location;
-        if (Config.weather.mode === 'geoapi') {
+
+        if (mode === 'geoapi') {
             // Priority 1: Browser Geolocation (async)
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
@@ -57,25 +59,100 @@
                         fetchWeather(`${lon},${lat}`);
                     },
                     (error) => {
-                        console.warn('Geolocation failed, falling back to auto_ip', error);
-                        // Priority 2: QWeather auto_ip (requires no location param usually or specific keyword)
-                        // Note: QWeather standard API usually needs location. auto_ip might work if passing 'auto_ip' string? 
-                        // Checking docs: 'location' param can be '101010100' or '116.40,39.9'
-                        // Some endpoints support client IP detection if location is omitted?
-                        // Let's try passing nothing or special handling?
-                        // Actually QWeather docs say for auto location, you usually need to provide the IP.
-                        // Let's fallback to configured location if geo fails.
+                        console.warn('Geolocation failed, falling back to manual location', error);
                         fetchWeather(location);
                     }
                 );
-                // Don't issue fetch immediately, wait for callback
                 return;
-            } else {
-                // Fallback
             }
         }
+        else if (mode === 'auto_ip') {
+            // Priority 2: Auto IP (No popup)
 
+            // Helper to try fetching IP from a source
+            const fetchIp = (url, parseFn, fallbackFn) => {
+                var IpReq = new XMLHttpRequest();
+                IpReq.open("GET", url, true);
+                IpReq.onreadystatechange = function () {
+                    if (IpReq.readyState == 4) {
+                        if (IpReq.status == 200) {
+                            try {
+                                var ip = parseFn(IpReq.responseText);
+                                if (ip) {
+                                    console.log("Got IP:", ip);
+                                    resolveIpToLocation(ip);
+                                } else {
+                                    fallbackFn();
+                                }
+                            } catch (e) {
+                                console.warn("IP Parse Error", e);
+                                fallbackFn();
+                            }
+                        } else {
+                            console.warn('IP Fetch failed', url, IpReq.status);
+                            fallbackFn();
+                        }
+                    }
+                };
+                IpReq.onerror = function () {
+                    console.warn('IP Network Error', url);
+                    fallbackFn();
+                };
+                IpReq.send();
+            };
+
+            // 1. Primary: UAPIs (User Requested)
+            fetchIp(
+                "https://uapis.cn/api/v1/network/myip?source=commercial",
+                (text) => {
+                    try {
+                        var res = JSON.parse(text);
+                        // Prioritize coordinates for better accuracy (addresses IP mismatch)
+                        if (res && res.longitude && res.latitude) {
+                            return res.longitude + "," + res.latitude;
+                        }
+                        if (res && res.ip) return res.ip;
+                    } catch (e) { }
+                    return null;
+                },
+                () => {
+                    console.warn("IP method failed, using manual location.");
+                    fetchWeather(location);
+                }
+            );
+
+            return;
+        }
+
+        // Manual mode or fallback
         fetchWeather(location);
+    }
+
+    function resolveIpToLocation(ip) {
+        const key = Config.weather.key;
+        // QWeather GeoAPI supports IP lookup
+        const url = `https://geoapi.qweather.com/v2/city/lookup?location=${ip}&key=${key}`;
+
+        var GeoReq = new XMLHttpRequest();
+        GeoReq.open("GET", url, true);
+        GeoReq.onreadystatechange = function () {
+            if (GeoReq.readyState == 4) {
+                if (GeoReq.status == 200) {
+                    var data = JSON.parse(GeoReq.responseText);
+                    if (data.code === '200' && data.location && data.location.length > 0) {
+                        // Found location
+                        const locationId = data.location[0].id; // Use City ID
+                        fetchWeather(locationId);
+                    } else {
+                        console.warn('GeoAPI IP lookup failed', data.code);
+                        fetchWeather(Config.weather.location); // Fallback
+                    }
+                } else {
+                    fetchWeather(Config.weather.location); // Fallback
+                }
+            }
+        };
+        GeoReq.send();
     }
 
     function fetchWeather(loc) {

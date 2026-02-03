@@ -1,6 +1,6 @@
 {
     "name": "ink-weather-clock",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Assets for Ink Weather Clock",
     "main": "js/date.js",
     "files": [
@@ -9,6 +9,6 @@
         "icons",
         "js"
     ],
-    "author": "",
+    "author": "Kanon",
     "license": "ISC"
 }
