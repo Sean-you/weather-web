@@ -1,7 +1,7 @@
-@font-face {font-family:"DSD";src: url(/fonts/DS-Digital.TTF);}/*LED字体*/
-@font-face {font-family:"Deng";src: url(/fonts/Deng.ttf);}/*等线常规*/
-@font-face {font-family:"Dengb";src: url(/fonts/Dengb.ttf);}/*等线粗体*/
-@font-face {font-family:"Dengl";src: url(/fonts/Dengl.ttf);}/*等线细体*/
+@font-face {font-family:"DSD";src: url(../fonts/DS-Digital.TTF);}/*LED字体*/
+@font-face {font-family:"Deng";src: url(../fonts/Deng.ttf);}/*等线常规*/
+@font-face {font-family:"Dengb";src: url(../fonts/Dengb.ttf);}/*等线粗体*/
+@font-face {font-family:"Dengl";src: url(../fonts/Dengl.ttf);}/*等线细体*/
 
 /*阳历及星期*/
 .CssSolarDateWeek{
