@@ -20,9 +20,7 @@
         if (cdn.endsWith('/')) cdn = cdn.slice(0, -1);
 
         assetBase = cdn + '/' + pkg;
-        if (ver !== 'latest') {
-            assetBase += '@' + ver;
-        }
+        assetBase += '@' + ver;
     } else {
         // Local mode
         // Assuming loader.js is in js/ folder, we want the root relative to index.html
