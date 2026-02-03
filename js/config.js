@@ -11,7 +11,7 @@ window.InkWeatherConfig = {
         cdnBase: 'https://cdn.cbd.int',
 
         // 包名
-        packageName: 'ink-weather-clock',
+        packageName: 'ink-weather-clock-static',
 
         // 版本，可用 'latest' 或具体版本号
         version: 'latest'
@@ -27,9 +27,23 @@ window.InkWeatherConfig = {
 
         // 城市ID 或 坐标 (经度,纬度)
         // 杭州: 101210101
-        location: '101210113',
+        location: '101210101',
 
-        // 和风天气 API Key
-        key: '2dae0cbe6aa642c887a5448856bf18b1'
+        // 天气 Key 或 JWT 配置
+        // 模式: 'key', 'jwt', 或 'server' (Vercel API代理, 最安全)
+        authMode: 'server',
+
+        // API Key 模式下只填这个
+        key: '',
+
+        // JWT 模式配置 (如果不使用 JWT 可留空)
+        jwt: {
+            kid: 'YOUR_KEY_ID',       // 凭据ID (公钥ID)
+            sub: 'YOUR_PROJECT_ID',   // 项目ID
+            // 私钥内容 (请注意保密，前端项目暴露私钥并不安全，仅限个人本地使用)
+            privateKey: `-----BEGIN PRIVATE KEY-----
+YOUR_PRIVATE_KEY_HERE
+-----END PRIVATE KEY-----`
+        }
     }
 };

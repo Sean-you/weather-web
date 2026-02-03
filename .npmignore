@@ -1,4 +1,26 @@
+# Exclude config info
 js/config.js
-index.html
-package.json
+
+# Exclude secrets (redundancy)
+keys.txt
+.env*
+
+# Exclude Serverless API code (NPM pkg is assets only)
+api/
+
+# Exclude Build Scripts
+build-config.js
+generate-keys.js
+
+# Exclude Vercel
+.vercel/
+vercel.json
+
+# Exclude Project Configs
+.gitignore
 .npmignore
+.gitattributes
+.github/
+
+# Exclude Demo Entry
+index.html

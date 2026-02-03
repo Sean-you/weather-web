@@ -128,31 +128,151 @@
         fetchWeather(location);
     }
 
-    function resolveIpToLocation(ip) {
-        const key = Config.weather.key;
-        // QWeather GeoAPI supports IP lookup
-        const url = `https://geoapi.qweather.com/v2/city/lookup?location=${ip}&key=${key}`;
+    // Token Cache
+    let _cachedToken = null;
+    let _tokenExp = 0;
 
-        var GeoReq = new XMLHttpRequest();
-        GeoReq.open("GET", url, true);
-        GeoReq.onreadystatechange = function () {
-            if (GeoReq.readyState == 4) {
-                if (GeoReq.status == 200) {
-                    var data = JSON.parse(GeoReq.responseText);
-                    if (data.code === '200' && data.location && data.location.length > 0) {
-                        // Found location
-                        const locationId = data.location[0].id; // Use City ID
-                        fetchWeather(locationId);
-                    } else {
-                        console.warn('GeoAPI IP lookup failed', data.code);
-                        fetchWeather(Config.weather.location); // Fallback
-                    }
-                } else {
-                    fetchWeather(Config.weather.location); // Fallback
-                }
+    async function getQWeatherToken() {
+        // Fallback to API Key mode if configured
+        if (Config.weather.authMode !== 'jwt') {
+            return null; // Signals to use Key
+        }
+
+        const jwtCfg = Config.weather.jwt;
+        if (!jwtCfg || !jwtCfg.privateKey || !jwtCfg.kid || !jwtCfg.sub) {
+            console.error("JWT Configuration incomplete");
+            return null;
+        }
+
+        // Return cached if valid (expires in 15 mins, we refresh if < 1 min left)
+        const now = Math.floor(Date.now() / 1000);
+        if (_cachedToken && now < _tokenExp - 60) {
+            return _cachedToken;
+        }
+
+        try {
+            // Using 'jose' library loaded in loader.js
+            const { SignJWT, importPKCS8 } = window.jose;
+
+            const alg = 'EdDSA';
+            const pkcs8 = await importPKCS8(jwtCfg.privateKey, alg);
+
+            const iat = now - 30; // 30s drift allowance
+            const exp = iat + 900; // 15 mins
+
+            _cachedToken = await new SignJWT({})
+                .setProtectedHeader({ alg, kid: jwtCfg.kid })
+                .setIssuer(jwtCfg.sub) // Some examples use sub as issuer or subject, docs say 'sub' in payload is ProjectID.
+                // Re-reading docs: 
+                // Payload: { sub: PROJECT_ID, iat, exp }
+                // Header: { kid: KEY_ID }
+                // Wait, docs example for Node says: customPayload = { sub: 'YOUR_PROJECT_ID' ... }
+                // So 'sub' claim is Project ID.
+                .setSubject(jwtCfg.sub)
+                .setIssuedAt(iat)
+                .setExpirationTime(exp)
+                .sign(pkcs8);
+
+            _tokenExp = exp;
+            console.log("Registered new Weather Token");
+            return _cachedToken;
+
+        } catch (e) {
+            console.error("JWT Generation Failed", e);
+            return null;
+        }
+    }
+
+    async function sendWeatherRequest(urlBase, paramsObj, onSuccess) {
+        // 1. Get Token
+        const token = await getQWeatherToken();
+
+        let url = urlBase;
+        // 2. Build URL or Headers
+        const queryString = Object.keys(paramsObj)
+            .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(paramsObj[k]))
+            .join('&');
+
+        let headers = {};
+
+        if (Config.weather.authMode === 'server') {
+            // Server Proxy Mode
+            // Redirect request to /api/weather
+            // Determine type based on urlBase
+            let type = 'weather';
+            if (urlBase.includes('city/lookup')) type = 'city';
+
+            // Construct proxy URL
+            // Current page is origin, so just /api/weather
+            url = '/api/weather?type=' + type;
+            if (queryString) url += '&' + queryString;
+
+        } else if (token) {
+            // JWT Mode: Header Authorization
+            headers['Authorization'] = 'Bearer ' + token;
+            // params don't need 'key'
+            if (queryString) url += '?' + queryString;
+        } else {
+            // API Key Mode: Add key to params
+            let fullParams = queryString;
+            if (Config.weather.key) {
+                fullParams += '&key=' + Config.weather.key;
+            }
+            if (fullParams) url += '?' + fullParams;
+        }
+
+        // 3. Send
+        var req = new XMLHttpRequest();
+        req.open("GET", url, true);
+
+        // Add headers
+        for (let h in headers) {
+            req.setRequestHeader(h, headers[h]);
+        }
+
+        req.onreadystatechange = function () {
+            if (req.readyState == 4) {
+                // Pass full req to callback to handle status checking
+                onSuccess(req);
             }
         };
-        GeoReq.send();
+        req.send();
+    }
+
+    function resolveIpToLocation(ip) {
+        const url = `https://geoapi.qweather.com/v2/city/lookup`;
+        sendWeatherRequest(url, { location: ip }, function (req) {
+            if (req.status == 200) {
+                var data = JSON.parse(req.responseText);
+                if (data.code === '200' && data.location && data.location.length > 0) {
+                    const locationId = data.location[0].id;
+                    fetchWeather(locationId);
+                } else {
+                    console.warn('GeoAPI IP lookup failed', data.code);
+                    fetchWeather(Config.weather.location);
+                }
+            } else {
+                fetchWeather(Config.weather.location);
+            }
+        });
+    }
+
+    function fetchCityInfo(loc) {
+        const url = `https://geoapi.qweather.com/v2/city/lookup`;
+        sendWeatherRequest(url, { location: loc }, function (req) {
+            if (req.status == 200) {
+                var data = JSON.parse(req.responseText);
+                if (data.code === '200' && data.location && data.location.length > 0) {
+                    var info = data.location[0];
+                    var province = info.adm1;
+                    var city = info.name;
+                    var elProv = document.getElementById("IdProvinces");
+                    var elCity = document.getElementById("IdCity");
+                    if (elProv) elProv.innerHTML = province;
+                    if (elCity) elCity.innerHTML = city;
+                }
+            }
+        });
     }
 
     function fetchWeather(loc) {
@@ -164,25 +284,17 @@
         // Fetch City Info (Parallel)
         fetchCityInfo(loc);
 
-        var NowWeather = new XMLHttpRequest();
-        // Construct URL
-        const key = Config.weather.key;
-        const url = `https://devapi.qweather.com/v7/weather/now?location=${loc}&key=${key}`;
-
-        NowWeather.open("GET", url, true);
-        NowWeather.onreadystatechange = function () {
-            if (NowWeather.readyState == 4 && NowWeather.status == 200) {
-                var NowWeatherData = JSON.parse(NowWeather.responseText);
+        const url = `https://devapi.qweather.com/v7/weather/now`;
+        sendWeatherRequest(url, { location: loc }, function (req) {
+            if (req.status == 200) {
+                var NowWeatherData = JSON.parse(req.responseText);
                 if (NowWeatherData.code !== '200') {
                     console.error("Weather API Error:", NowWeatherData.code);
                     return;
                 }
 
-                // Update DOM
-                // Use AssetBase for icons!
                 var iconPath = AssetBase + '/icons/' + NowWeatherData.now.icon + '.svg';
                 document.getElementById("IdIcon").src = iconPath;
-
                 document.getElementById("IdText").innerHTML = NowWeatherData.now.text;
                 document.getElementById("IdTemp").innerHTML = NowWeatherData.now.temp + '°';
                 document.getElementById("IdWind").innerHTML = NowWeatherData.now.windDir + '•' + NowWeatherData.now.windSpeed + 'km/h';
@@ -191,43 +303,12 @@
                 document.getElementById("IdWindScale").innerHTML = NowWeatherData.now.windScale + '级';
                 document.getElementById("IdPressure").innerHTML = NowWeatherData.now.pressure + 'Hpa';
             }
-        };
-        NowWeather.send();
+        });
 
-        // Schedule next update (30 mins = 1800000ms)
         setTimeout(TodayWeather, 1800000);
     }
 
-    function fetchCityInfo(loc) {
-        const key = Config.weather.key;
-        const url = `https://geoapi.qweather.com/v2/city/lookup?location=${loc}&key=${key}`;
-
-        var CityReq = new XMLHttpRequest();
-        CityReq.open("GET", url, true);
-        CityReq.onreadystatechange = function () {
-            if (CityReq.readyState == 4 && CityReq.status == 200) {
-                var data = JSON.parse(CityReq.responseText);
-                if (data.code === '200' && data.location && data.location.length > 0) {
-                    var info = data.location[0];
-                    var province = info.adm1; // e.g., "浙江省"
-                    var city = info.name;     // e.g., "杭州"
-
-                    // Optional: trim "省"/"市" if desired for cleaner look
-                    // province = province.replace(/省|市|自治区|特别行政区|壮族|回族|维吾尔/g, ''); 
-                    // city = city.replace(/市/g, '');
-
-                    // Update DOM
-                    // Check if elements exist (in case user removed them)
-                    var elProv = document.getElementById("IdProvinces");
-                    var elCity = document.getElementById("IdCity");
-                    if (elProv) elProv.innerHTML = province;
-                    if (elCity) elCity.innerHTML = city;
-                }
-            }
-        };
-        CityReq.send();
-    }
-
+    // ... Existing Poetry code ...
     // 名言部分
     function NowPoetry() {
         var Poetry = new XMLHttpRequest();
@@ -242,7 +323,6 @@
         setTimeout(NowPoetry, 1800000);
     }
 
-    // Initialize
     window.InkWeatherApp = {
         init: function () {
             SolarLunarTime();
