@@ -1,15 +1,15 @@
 window.InkWeatherConfig = {
     assets: {
-        source: 'npm', 
+        source: 'npm',
         cdnBase: 'https://cdn.cbd.int',
         packageName: 'ink-weather-clock-static',
-        version: 'latest'
+        version: '1.0.6'
     },
     weather: {
         mode: 'auto_ip',
         location: '101210101',
         authMode: 'server',
-        
+
         // Credentials are handled server-side in Vercel Functions (api/weather.js)
         // Keep these empty for client security
         key: '',
