@@ -1,6 +1,6 @@
 {
     "name": "ink-weather-clock-static",
-    "version": "1.0.2",
+    "version": "1.0.4",
     "description": "Assets for Ink Weather Clock",
     "main": "js/date.js",
     "files": [

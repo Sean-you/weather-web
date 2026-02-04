@@ -151,8 +151,9 @@
         }
 
         try {
-            // Using 'jose' library loaded in loader.js
-            const { SignJWT, importPKCS8 } = window.jose;
+            // Using 'jose' library loaded dynamically (ESM)
+            const joseModule = await import(AssetBase + '/js/jose.min.js');
+            const { SignJWT, importPKCS8 } = joseModule;
 
             const alg = 'EdDSA';
             const pkcs8 = await importPKCS8(jwtCfg.privateKey, alg);

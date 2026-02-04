@@ -55,17 +55,16 @@
     loadCSS(assetBase + '/css/style.css');
 
     // 2. Load dependencies
-    // Load jose for JWT (needed for QWeather auth)
-    loadScript('https://cdn.jsdelivr.net/npm/jose@5.2.0/dist/browser/jose.min.js', function () {
-        // Load date.js
-        loadScript(assetBase + '/js/date.js', function () {
-            // 3. Load Main App Logic
-            loadScript(assetBase + '/js/app.js', function () {
-                // 4. Initialize
-                if (window.InkWeatherApp && window.InkWeatherApp.init) {
-                    window.InkWeatherApp.init();
-                }
-            });
+    // jose is now loaded dynamically in app.js via ESM import
+
+    // Load date.js
+    loadScript(assetBase + '/js/date.js', function () {
+        // 3. Load Main App Logic
+        loadScript(assetBase + '/js/app.js', function () {
+            // 4. Initialize
+            if (window.InkWeatherApp && window.InkWeatherApp.init) {
+                window.InkWeatherApp.init();
+            }
         });
     });
 
