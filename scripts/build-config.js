@@ -17,7 +17,7 @@ let packageName = process.env.PACKAGE_NAME || 'ink-weather-clock';
 let version = process.env.VERSION || 'latest';
 
 // Try to read existing config.js to preserve user settings
-const currentConfigPath = path.join(__dirname, 'js', 'config.js');
+const currentConfigPath = path.join(__dirname, '..', 'js', 'config.js');
 if (fs.existsSync(currentConfigPath)) {
     try {
         const currentContent = fs.readFileSync(currentConfigPath, 'utf8');
@@ -63,7 +63,7 @@ const configContent = `window.InkWeatherConfig = {
 };`;
 
 // Output path: js/config.js
-const outputPath = path.join(__dirname, 'js', 'config.js');
+const outputPath = path.join(__dirname, '..', 'js', 'config.js');
 
 console.log('Generating config.js from environment variables...');
 fs.writeFileSync(outputPath, configContent);

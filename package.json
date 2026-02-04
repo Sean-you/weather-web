@@ -1,6 +1,7 @@
 {
     "name": "ink-weather-clock-static",
     "version": "1.0.4",
+    "type": "module",
     "description": "Assets for Ink Weather Clock",
     "main": "js/date.js",
     "files": [
@@ -12,7 +13,7 @@
     "author": "Kanon",
     "license": "ISC",
     "scripts": {
-        "build": "node build-config.js"
+        "build": "node scripts/build-config.js"
     },
     "dependencies": {
         "jose": "^6.1.3"
