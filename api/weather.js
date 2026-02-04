@@ -1,4 +1,5 @@
 import https from 'https';
+import { createGunzip } from 'zlib';
 import { SignJWT, importPKCS8 } from 'jose';
 
 // Cache token in memory (lambda container reuse)
@@ -86,23 +87,38 @@ export default async function handler(req, res) {
         }
 
         // 4. Proxy Request with timeout and error handling
+
         const proxyReq = https.get(targetUrl, { headers, timeout: 5000 }, (proxyRes) => {
-            let data = '';
-            proxyRes.on('data', chunk => data += chunk);
-            proxyRes.on('end', () => {
+            let stream = proxyRes;
+
+            // Handle Gzip compression if present
+            if (proxyRes.headers['content-encoding'] === 'gzip') {
+                const gunzip = createGunzip();
+                proxyRes.pipe(gunzip);
+                stream = gunzip;
+            }
+
+            let data = [];
+            stream.on('data', chunk => data.push(chunk));
+            stream.on('end', () => {
+                const buffer = Buffer.concat(data);
+                const text = buffer.toString();
                 try {
-                    const jsonData = JSON.parse(data);
-                    // Pass status code from upstream or 200
+                    const jsonData = JSON.parse(text);
                     res.status(proxyRes.statusCode || 200).json(jsonData);
                 } catch (e) {
-                    console.error("Upstream API Parse Error:", data);
+                    console.error("Upstream API Parse Error:", text);
                     res.status(502).json({
                         code: '502',
                         message: 'Upstream API returned invalid JSON',
                         upstreamStatus: proxyRes.statusCode,
-                        raw: data.substring(0, 100)
+                        raw: text.substring(0, 100)
                     });
                 }
+            });
+            stream.on('error', (e) => {
+                console.error("Stream Error:", e);
+                res.status(500).json({ code: '500', message: 'Response processing failed' });
             });
         });
 
