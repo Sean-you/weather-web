@@ -246,8 +246,11 @@
             if (req.status == 200) {
                 var data = JSON.parse(req.responseText);
                 if (data.code === '200' && data.location && data.location.length > 0) {
-                    const locationId = data.location[0].id;
-                    fetchWeather(locationId);
+                    const info = data.location[0];
+                    // Directly update UI with info we just got, avoiding a 2nd call
+                    updateCityUI(info);
+                    // Fetch weather only, skipping city info lookup
+                    fetchWeather(info.id, true);
                 } else {
                     console.warn('GeoAPI IP lookup failed', data.code);
                     fetchWeather(Config.weather.location);
@@ -258,32 +261,37 @@
         });
     }
 
+    function updateCityUI(info) {
+        var province = info.adm1;
+        var city = info.name;
+        var elProv = document.getElementById("IdProvinces");
+        var elCity = document.getElementById("IdCity");
+        if (elProv) elProv.innerHTML = province;
+        if (elCity) elCity.innerHTML = city;
+    }
+
     function fetchCityInfo(loc) {
         const url = `https://geoapi.qweather.com/v2/city/lookup`;
         sendWeatherRequest(url, { location: loc }, function (req) {
             if (req.status == 200) {
                 var data = JSON.parse(req.responseText);
                 if (data.code === '200' && data.location && data.location.length > 0) {
-                    var info = data.location[0];
-                    var province = info.adm1;
-                    var city = info.name;
-                    var elProv = document.getElementById("IdProvinces");
-                    var elCity = document.getElementById("IdCity");
-                    if (elProv) elProv.innerHTML = province;
-                    if (elCity) elCity.innerHTML = city;
+                    updateCityUI(data.location[0]);
                 }
             }
         });
     }
 
-    function fetchWeather(loc) {
+    function fetchWeather(loc, skipCityInfo) {
         if (!loc) {
             console.error("No location specified for weather.");
             return;
         }
 
-        // Fetch City Info (Parallel)
-        fetchCityInfo(loc);
+        // Fetch City Info (Parallel) if not already done
+        if (!skipCityInfo) {
+            fetchCityInfo(loc);
+        }
 
         const url = `https://devapi.qweather.com/v7/weather/now`;
         sendWeatherRequest(url, { location: loc }, function (req) {
@@ -306,7 +314,13 @@
             }
         });
 
-        setTimeout(TodayWeather, 1800000);
+        // Clear previous timer if exists to prevent multiple timers stacking
+        if (window._weatherTimer) clearTimeout(window._weatherTimer);
+        window._weatherTimer = setTimeout(() => {
+            // For periodic updates, we re-fetch everything (including city info in case it changes? usually not needed but safer for current logic default)
+            // Or just fetch weather. Let's keep default behavior for refresh.
+            TodayWeather();
+        }, 1800000);
     }
 
     // ... Existing Poetry code ...
