@@ -12,7 +12,7 @@
  *   - 环境变量从 context.env 读取，而非 process.env
  */
 
-const DEFAULT_API_HOST = 'm733jtebn6.re.qweatherapi.com';
+const DEFAULT_API_HOST = '******.re.qweatherapi.com';
 
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
